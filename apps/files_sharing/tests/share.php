@@ -246,6 +246,36 @@ class Test_Files_Sharing extends OCA\Files_sharing\Tests\TestCase {
 		\OC::$server->getConfig()->deleteSystemValue('share_folder');
 	}
 
+	function testShareWithGroupUniqueName() {
+		$this->loginHelper(self::TEST_FILES_SHARING_API_USER2);
+		\OC\Files\Filesystem::file_put_contents('test.txt', 'test');
+
+		$this->loginHelper(self::TEST_FILES_SHARING_API_USER1);
+		\OC\Files\Filesystem::file_put_contents('test.txt', 'test');
+
+		$fileInfo = \OC\Files\Filesystem::getFileInfo('test.txt');
+
+		$this->assertTrue(
+				\OCP\Share::shareItem('file', $fileInfo['fileid'], \OCP\Share::SHARE_TYPE_GROUP, self::TEST_FILES_SHARING_API_GROUP1, 23)
+		);
+
+		$this->loginHelper(self::TEST_FILES_SHARING_API_USER2);
+
+		$items = \OCP\Share::getItemsSharedWith('file');
+
+		$this->assertSame('/test (2).txt' ,$items[0]['file_target']);
+		$this->assertSame(23, $items[0]['permissions']);
+
+		$this->loginHelper(self::TEST_FILES_SHARING_API_USER1);
+		\OCP\Share::setPermissions('file', $items[0]['item_source'], $items[0]['share_type'], $items[0]['share_with'], 3);
+
+		$this->loginHelper(self::TEST_FILES_SHARING_API_USER2);
+		$items = \OCP\Share::getItemsSharedWith('file');
+
+		$this->assertSame('/test (2).txt' ,$items[0]['file_target']);
+		$this->assertSame(3, $items[0]['permissions']);
+	}
+
 	/**
 	 * shared files should never have delete permissions
 	 * @dataProvider  DataProviderTestFileSharePermissions
